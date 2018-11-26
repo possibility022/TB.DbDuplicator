@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DatabaseCopier.ViewModels;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -20,9 +21,35 @@ namespace DatabaseCopier
     /// </summary>
     public partial class MainWindow : Window
     {
+        private MainWindowViewModel _viewModel;
+
+        private MainWindowViewModel ViewModel { get => _viewModel ?? (_viewModel = (MainWindowViewModel)DataContext); }
+
         public MainWindow()
         {
             InitializeComponent();
+            var ViewModel = new MainWindowViewModel();
+            DataContext = ViewModel;
+        }
+
+        private void MoveToToCopy_Click(object sender, RoutedEventArgs e)
+        {
+            ViewModel.MoveToToCopyList();
+        }
+
+        private void MoveToIgnore_Click(object sender, RoutedEventArgs e)
+        {
+            ViewModel.MoveToIgnore();
+        }
+
+        private void Start_Click(object sender, RoutedEventArgs e)
+        {
+            ViewModel.Start();
+        }
+
+        private void Load_Click(object sender, RoutedEventArgs e)
+        {
+            ViewModel.Load();
         }
     }
 }
