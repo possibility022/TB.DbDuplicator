@@ -42,6 +42,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ForeignKey.cs" />
+    <Compile Include="Hierarchy.cs" />
     <Compile Include="TableNode.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
