@@ -40,13 +40,14 @@ namespace DatabaseCopier.ViewModels
         DatabaseIO _databaseIO;
         Dictionary<int, TableNode> allLoadedTables;
 
-        private string _errorText;
-        public string ErrorText
+        private string _infoText;
+        public string InfoText
         {
-            get { return _errorText; }
-            set { SetProperty(ref _errorText, value); }
+            get { return _infoText; }
+            set { SetProperty(ref _infoText, value); }
         }
 
+        private StringBuilder _infoMessageBuffer;
 
 
         private string _databaseSource;
@@ -63,23 +64,33 @@ namespace DatabaseCopier.ViewModels
             set { SetProperty(ref _databaseDestination, value); }
         }
 
+        private bool _startEnabled = false;
+        public bool StartEnabled
+        {
+            get => _startEnabled;
+            set => SetProperty(ref _startEnabled, value);
+        }
+
         public MainWindowViewModel()
         {
             TablesToCopy = new ObservableCollection<TableNode>();
             TablesToIgnore = new ObservableCollection<TableNode>();
+        }
+
+        public void Load()
+        {
 
             for (int i = 0; i < 10; i++)
             {
                 TablesToCopy.Add(new TableNode($"TableName{i}", i));
             }
-        }
 
-        public void Load()
-        {
             _databaseIO = new DatabaseIO(DatabaseSource, DatabaseDestination);
             allLoadedTables = _databaseIO.GetTables();
             foreach (var t in allLoadedTables)
                 TablesToCopy.Add(t.Value);
+
+            StartEnabled = TablesToCopy.Any();
         }
 
         public void MoveToIgnore()
@@ -100,42 +111,54 @@ namespace DatabaseCopier.ViewModels
             _tablesToIgnore.Remove(table);
         }
 
-        internal void Start()
+        internal async Task<bool> Start()
         {
+            Engine engine = null;
             try
             {
-                ErrorText = string.Empty;
-                var hierarchy = new Hierarchy(allLoadedTables, _databaseIO.GetForeignKeys());
-                var tables = hierarchy.GetTablesInOrder();
-                var ignore = new HashSet<TableNode>(_tablesToIgnore);
+                InfoText = string.Empty;
+                _infoMessageBuffer = new StringBuilder();
 
-                foreach (var t in tables)
-                {
-                    if (ignore.Contains(t))
-                        _databaseIO.CopyTable(t);
-                }
+                var hierarchy = new Hierarchy(allLoadedTables, _databaseIO.GetForeignKeys());
+                var tables = hierarchy
+                    .GetTablesInOrder()
+                    .Except(_tablesToIgnore)
+                    .ToList();
+
+                engine = new Engine(_databaseIO, tables);
+                engine.InforationEvent += Engine_OnTableCopied;
+
+                await engine.StartAsync();
+
+                return true;
             }
             catch (Exception ex)
             {
-                var sb = new StringBuilder();
+                if (engine != null)
+                    engine.InforationEvent -= Engine_OnTableCopied;
 
-                sb.AppendLine(ex.Message);
-                sb.AppendLine(ex.StackTrace);
+                _infoMessageBuffer.AppendLine(ex.Message);
+                _infoMessageBuffer.AppendLine(ex.StackTrace);
 
                 while (ex.InnerException != null)
                 {
-                    sb.AppendLine();
-                    sb.AppendLine("INNER EXCEPTION:");
-                    sb.AppendLine();
+                    _infoMessageBuffer.AppendLine();
+                    _infoMessageBuffer.AppendLine("INNER EXCEPTION:");
+                    _infoMessageBuffer.AppendLine();
                     ex = ex.InnerException;
-                    sb.AppendLine(ex.Message);
-                    sb.AppendLine(ex.StackTrace);
+                    _infoMessageBuffer.AppendLine(ex.Message);
+                    _infoMessageBuffer.AppendLine(ex.StackTrace);
                 }
 
-                ErrorText = sb.ToString();
-
+                InfoText = _infoMessageBuffer.ToString();
+                return false;
             }
         }
 
+        private void Engine_OnTableCopied(object sender, string e)
+        {
+            _infoMessageBuffer.AppendLine(e);
+            InfoText = _infoMessageBuffer.ToString();
+        }
     }
 }

@@ -93,23 +93,6 @@ namespace DatabaseCopier.Proxy
             {
                 connection.Open();
 
-                var count = new SqlCommand()
-                {
-                    CommandText = "SELECT Count(*) FROM " + table.TableName,
-                    CommandType = CommandType.Text,
-                    Connection = connection
-                };
-
-                int rows = -1;
-
-                using (var cReader = count.ExecuteReader())
-                {
-                    cReader.Read();
-                    rows = cReader.GetInt32(0);
-                }
-
-                Console.WriteLine($"{table.TableName} Rows: {rows}");
-
                 var cmd = new SqlCommand()
                 {
                     CommandText = "SELECT * from " + table.TableName,
@@ -133,6 +116,28 @@ namespace DatabaseCopier.Proxy
 
                 }
             }
+        }
+
+        public int GetRows(TableNode table)
+        {
+            int rows = -1;
+            using (var connection = new SqlConnection(_sourceConnectionString))
+            {
+                var count = new SqlCommand()
+                {
+                    CommandText = "SELECT Count(*) FROM " + table.TableName,
+                    CommandType = CommandType.Text,
+                    Connection = connection
+                };
+                
+                using (var cReader = count.ExecuteReader())
+                {
+                    cReader.Read();
+                    rows = cReader.GetInt32(0);
+                }
+            }
+
+            return rows;
         }
 
         private void BulkCopy_SqlRowsCopied(object sender, SqlRowsCopiedEventArgs e)

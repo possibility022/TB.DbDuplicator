@@ -49,8 +49,14 @@
                 Grid.Column="0"
                 Content="Destination: " />
 
-            <TextBox Grid.Row="0" Grid.Column="1" />
-            <TextBox Grid.Row="1" Grid.Column="1" />
+            <TextBox
+                Grid.Row="0"
+                Grid.Column="1"
+                Text="{Binding DatabaseSource}" />
+            <TextBox
+                Grid.Row="1"
+                Grid.Column="1"
+                Text="{Binding DatabaseDestinatnion}" />
         </Grid>
 
 
@@ -94,23 +100,26 @@
             Margin="10"
             HorizontalAlignment="Center"
             Orientation="Horizontal">
-            <Button
-                Width="100"
-                Height="40"
-                Click="Start_Click"
-                Content="Start" />
 
             <Button
                 Width="100"
                 Height="40"
                 Click="Load_Click"
                 Content="Load" />
+
+            <Button
+                Width="100"
+                Height="40"
+                Click="Start_Click"
+                Content="Start"
+                IsEnabled="True" />
+
+
         </StackPanel>
 
-        <TextBlock
-            Grid.Row="4"
-            Grid.ColumnSpan="3"
-            Text="{Binding ErrorText}" />
+        <ScrollViewer Grid.Row="4" Grid.ColumnSpan="3">
+            <TextBlock Text="{Binding InfoText}" />
+        </ScrollViewer>
 
     </Grid>
 </Window>
