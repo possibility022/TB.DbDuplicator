@@ -110,14 +110,20 @@ namespace DatabaseCopier.ViewModels
             try
             {
                 allLoadedTables = _databaseIO.GetTables();
-            }catch(Exception ex)
+            }
+            catch (Exception ex)
             {
                 _infoMessageBuffer.AppendLine(ex.Message);
                 _infoMessageBuffer.AppendLine(ex.StackTrace);
             }
 
             foreach (var t in allLoadedTables)
-                TablesToCopy.Add(t.Value);
+            {
+                if (!CacheFile.Instance.LastIgnoredTables.Contains(t.Value.TableName))
+                    TablesToCopy.Add(t.Value);
+                else
+                    TablesToIgnore.Add(t.Value);
+            }
 
             StartEnabled = TablesToCopy.Any();
         }
