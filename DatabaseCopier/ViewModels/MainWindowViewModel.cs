@@ -1,9 +1,11 @@
 ﻿using DatabaseCopier.Models;
 using DatabaseCopier.Proxy;
+using Newtonsoft.Json;
 using Prism.Mvvm;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,6 +14,8 @@ namespace DatabaseCopier.ViewModels
 {
     class MainWindowViewModel : BindableBase
     {
+        private const string fileName = "cache.cache";
+
         private ObservableCollection<TableNode> _tablesToCopy;
         private ObservableCollection<TableNode> _tablesToIgnore;
 
@@ -57,6 +61,20 @@ namespace DatabaseCopier.ViewModels
             set { SetProperty(ref _databaseSource, value); }
         }
 
+        private ObservableCollection<string> _databaseSourceList;
+        public ObservableCollection<string> DatabaseSourceList
+        {
+            get { return _databaseSourceList; }
+            set { SetProperty(ref _databaseSourceList, value); }
+        }
+
+        private ObservableCollection<string> _databaseDestinationList;
+        public ObservableCollection<string> DatabaseDestinationList
+        {
+            get { return _databaseDestinationList; }
+            set { SetProperty(ref _databaseDestinationList, value); }
+        }
+
         private string _databaseDestination;
         public string DatabaseDestination
         {
@@ -75,6 +93,9 @@ namespace DatabaseCopier.ViewModels
         {
             TablesToCopy = new ObservableCollection<TableNode>();
             TablesToIgnore = new ObservableCollection<TableNode>();
+            DatabaseDestinationList = new ObservableCollection<string>();
+            DatabaseSourceList = new ObservableCollection<string>();
+            LoadCacheFile();
         }
 
         public void Load()
@@ -86,7 +107,15 @@ namespace DatabaseCopier.ViewModels
             }
 
             _databaseIO = new DatabaseIO(DatabaseSource, DatabaseDestination);
-            allLoadedTables = _databaseIO.GetTables();
+            try
+            {
+                allLoadedTables = _databaseIO.GetTables();
+            }catch(Exception ex)
+            {
+                _infoMessageBuffer.AppendLine(ex.Message);
+                _infoMessageBuffer.AppendLine(ex.StackTrace);
+            }
+
             foreach (var t in allLoadedTables)
                 TablesToCopy.Add(t.Value);
 
@@ -111,6 +140,25 @@ namespace DatabaseCopier.ViewModels
             _tablesToIgnore.Remove(table);
         }
 
+        private void UpdateCacheFile()
+        {
+            CacheFile.Instance.DatabaseDestination.Add(DatabaseDestination);
+            CacheFile.Instance.DatabaseSource.Add(DatabaseSource);
+            CacheFile.Instance.LastIgnoredTables = new HashSet<string>(TablesToIgnore.Select(r => r.TableName));
+
+            File.WriteAllText(fileName, JsonConvert.SerializeObject(CacheFile.Instance));
+        }
+
+        private void LoadCacheFile()
+        {
+            if (File.Exists(fileName))
+            {
+                CacheFile.Instance = JsonConvert.DeserializeObject<CacheFile>(File.ReadAllText(fileName));
+                _databaseDestinationList = new ObservableCollection<string>(CacheFile.Instance.DatabaseDestination);
+                _databaseSourceList = new ObservableCollection<string>(CacheFile.Instance.DatabaseSource);
+            }
+        }
+
         internal async Task<bool> Start()
         {
             Engine engine = null;
@@ -118,6 +166,12 @@ namespace DatabaseCopier.ViewModels
             {
                 InfoText = string.Empty;
                 _infoMessageBuffer = new StringBuilder();
+
+                if (!_databaseSourceList.Contains(DatabaseSource) && !string.IsNullOrEmpty(DatabaseSource))
+                    _databaseSourceList.Add(DatabaseSource);
+
+                if (!_databaseDestinationList.Contains(DatabaseDestination) && string.IsNullOrEmpty(DatabaseDestination))
+                    _databaseDestinationList.Add(DatabaseDestination);
 
                 var hierarchy = new Hierarchy(allLoadedTables, _databaseIO.GetForeignKeys());
                 var tables = hierarchy
@@ -128,7 +182,10 @@ namespace DatabaseCopier.ViewModels
                 engine = new Engine(_databaseIO, tables);
                 engine.InforationEvent += Engine_OnTableCopied;
 
-                await engine.StartAsync();
+                var task = engine.StartAsync();
+                UpdateCacheFile();
+
+                await task;
 
                 return true;
             }

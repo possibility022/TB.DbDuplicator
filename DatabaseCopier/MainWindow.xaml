@@ -49,14 +49,18 @@
                 Grid.Column="0"
                 Content="Destination: " />
 
-            <TextBox
+            <ComboBox
                 Grid.Row="0"
                 Grid.Column="1"
-                Text="{Binding DatabaseSource}" />
-            <TextBox
+                IsEditable="True"
+                ItemsSource="{Binding DatabaseSourceList}"
+                Text="{Binding DatabaseSource, UpdateSourceTrigger=PropertyChanged}" />
+            <ComboBox
                 Grid.Row="1"
                 Grid.Column="1"
-                Text="{Binding DatabaseDestinatnion}" />
+                IsEditable="True"
+                ItemsSource="{Binding DatabaseDestinatnionList}"
+                Text="{Binding DatabaseDestination, UpdateSourceTrigger=PropertyChanged}" />
         </Grid>
 
 
