@@ -59,7 +59,7 @@
                 Grid.Row="1"
                 Grid.Column="1"
                 IsEditable="True"
-                ItemsSource="{Binding DatabaseDestinatnionList}"
+                ItemsSource="{Binding DatabaseDestinationList}"
                 Text="{Binding DatabaseDestination, UpdateSourceTrigger=PropertyChanged}" />
         </Grid>
 

@@ -13,6 +13,7 @@ namespace DatabaseCopier.Proxy
 
         private const int ObjectName = 0;
         private const int ObjectId = 1;
+        private const int SchemaId = 3;
         private const int ParentObjectId = 4;
         private const int ReferenceObjectId = 12;
 
@@ -24,9 +25,42 @@ namespace DatabaseCopier.Proxy
             _targetConnectionString = targetConnectionString;
         }
 
+        public Dictionary<int, TableSchema> GetSchemas()
+        {
+            var schemas = new Dictionary<int, TableSchema>();
+
+            using (var connection =
+                new SqlConnection(
+                    _sourceConnectionString)
+            )
+            {
+                var cmd = new SqlCommand
+                {
+                    CommandText = "SELECT * FROM sys.schemas",
+                    CommandType = CommandType.Text,
+                    Connection = connection
+                };
+
+                connection.Open();
+
+                var reader = cmd.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    var schemaName = reader.GetString(ObjectName);
+                    var schemaId = reader.GetInt32(ObjectId);
+                    schemas.Add(schemaId, new TableSchema(schemaId, schemaName));
+                }
+            }
+
+            return schemas;
+        }
+
         public Dictionary<int, TableNode> GetTables(HashSet<string> ignoreTables = null)
         {
             var tables = new Dictionary<int, TableNode>();
+
+            var schemas = GetSchemas();
 
             using (var connection =
                 new SqlConnection(
@@ -50,7 +84,8 @@ namespace DatabaseCopier.Proxy
                     if (ignoreTables == null || !ignoreTables.Contains(tableName))
                     {
                         var tableId = reader.GetInt32(ObjectId);
-                        tables.Add(tableId, new TableNode(tableName, tableId));
+                        var schemaId = reader.GetInt32(SchemaId);
+                        tables.Add(tableId, new TableNode(tableId, tableName, schemas[schemaId]));
                     }
                 }
             }
@@ -95,10 +130,10 @@ namespace DatabaseCopier.Proxy
 
                 var cmd = new SqlCommand()
                 {
-                    CommandText = "SELECT * from " + table.TableName,
+                    CommandText = $"SELECT * from " + table.FullTableName,
                     CommandType = CommandType.Text,
                     Connection = connection
-                };
+                };                
 
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -107,7 +142,7 @@ namespace DatabaseCopier.Proxy
                         new SqlBulkCopy(_targetConnectionString, SqlBulkCopyOptions.KeepIdentity))
                     {
                         bulkCopy.BulkCopyTimeout = 60 * 20;
-                        bulkCopy.DestinationTableName = table.TableName;
+                        bulkCopy.DestinationTableName = table.FullTableName;
                         bulkCopy.BatchSize = 30000;
                         bulkCopy.SqlRowsCopied += BulkCopy_SqlRowsCopied;
                         bulkCopy.WriteToServer(reader);
@@ -125,11 +160,13 @@ namespace DatabaseCopier.Proxy
             {
                 var count = new SqlCommand()
                 {
-                    CommandText = "SELECT Count(*) FROM " + table.TableName,
+                    CommandText = "SELECT Count(*) FROM " + table.FullTableName,
                     CommandType = CommandType.Text,
                     Connection = connection
                 };
-                
+
+                connection.Open();
+
                 using (var cReader = count.ExecuteReader())
                 {
                     cReader.Read();

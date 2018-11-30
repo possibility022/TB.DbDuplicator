@@ -33,11 +33,12 @@ namespace DatabaseCopier
             foreach (var t in _tablesToCopy)
             {
                 var rows = _databaseIO.GetRows(t);
-                InforationEvent?.Invoke(this, $"Starting with {t.TableName}. Rows: {rows}");
+                InforationEvent?.Invoke(this, $"Starting with {t.FullTableName}. Rows: {rows}");
                 _databaseIO.CopyTable(t);
                 //System.Threading.Thread.Sleep(5000); // simulate long operation
-                InforationEvent?.Invoke(this, $"Coping {t.TableName} done.");
+                InforationEvent?.Invoke(this, $"Coping {t.FullTableName} done.");
             }
+            InforationEvent?.Invoke(this, "DONE!");
             s.Stop();
             return s.Elapsed;
         }

@@ -100,12 +100,6 @@ namespace DatabaseCopier.ViewModels
 
         public void Load()
         {
-
-            for (int i = 0; i < 10; i++)
-            {
-                TablesToCopy.Add(new TableNode($"TableName{i}", i));
-            }
-
             _databaseIO = new DatabaseIO(DatabaseSource, DatabaseDestination);
             try
             {
