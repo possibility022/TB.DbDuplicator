@@ -2,6 +2,7 @@
     x:Class="DatabaseCopier.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="clr-namespace:DatabaseCopier.Converters"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:DatabaseCopier"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -10,6 +11,10 @@
     Width="800"
     Height="550"
     mc:Ignorable="d">
+
+    <Window.Resources>
+        <converters:SecoundsToTimeConverter x:Key="SecoundsConverter" />
+    </Window.Resources>
 
     <Grid Margin="10">
 
@@ -152,6 +157,8 @@
             <Label Content="{Binding TablesCopied}" />
             <Label Content=" / " />
             <Label Content="{Binding AllTablesToCopy}" />
+            <Label Content="Time: " />
+            <Label Content="{Binding TimeSecounds, Converter={StaticResource SecoundsConverter}}" />
 
         </StackPanel>
 

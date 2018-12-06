@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Timers;
 
 namespace DatabaseCopier.ViewModels
 {
@@ -101,12 +102,16 @@ namespace DatabaseCopier.ViewModels
         private int _allTablesToCopy;
         private long _progressBar = 0;
         private long _rowsToCopy = 1;
+        private int _timeSecounds;
 
         public int TablesCopied { get => _tablesCopied; set => SetProperty(ref _tablesCopied, value); }
         public int AllTablesToCopy { get => _allTablesToCopy; private set => SetProperty(ref _allTablesToCopy, value); }
         public long ProgressBar { get => _progressBar; private set => SetProperty(ref _progressBar, value); }
         public long RowsToCopy { get => _rowsToCopy; private set => SetProperty(ref _rowsToCopy, value); }
+        public int TimeSecounds { get => _timeSecounds; set => SetProperty(ref _timeSecounds, value); }
 
+        Timer _timer;
+        
 
         public MainWindowViewModel()
         {
@@ -115,7 +120,14 @@ namespace DatabaseCopier.ViewModels
             DatabaseDestinationList = new ObservableCollection<string>();
             DatabaseSourceList = new ObservableCollection<string>();
             _infoMessageBuffer = new StringBuilder();
+            _timer = new Timer(1000);
+            _timer.Elapsed += _timer_Elapsed;
             LoadCacheFile();
+        }
+
+        private void _timer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            TimeSecounds += 1;
         }
 
         public void Load()
@@ -187,11 +199,14 @@ namespace DatabaseCopier.ViewModels
             Engine engine = null;
             try
             {
+                TimeSecounds = 0;
                 StartEnabled = false;
                 LoadEnabled = false;
                 InfoText = string.Empty;
                 TablesCopied = 0;
                 AllTablesToCopy = TablesToCopy.Count;
+
+                _timer.Start();
 
                 _infoMessageBuffer.Clear();
 
@@ -245,6 +260,7 @@ namespace DatabaseCopier.ViewModels
                     engine.RowsCopiedNotify -= Engine_RowsCopiedNotify;
                 }
 
+                _timer.Stop();
                 LoadEnabled = true;
                 StartEnabled = true;
             }
