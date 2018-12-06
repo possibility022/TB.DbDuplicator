@@ -12,11 +12,14 @@ namespace DatabaseCopier
         private readonly DatabaseIO _databaseIO;
         private readonly IEnumerable<TableNode> _tablesToCopy;
 
-        public event EventHandler<string> InforationEvent;
+        public event EventHandler<int> RowsCopiedNotify;
+        public event EventHandler<Tuple<string, int>> StartingWith;
+        public event EventHandler<string> DoneWith;
 
         public Engine(DatabaseIO databaseIO, IEnumerable<TableNode> tablesToCopy)
         {
             _databaseIO = databaseIO;
+            _databaseIO.ProgressEvent = ProgressEvent;
             this._tablesToCopy = tablesToCopy;
         }
 
@@ -33,14 +36,19 @@ namespace DatabaseCopier
             foreach (var t in _tablesToCopy)
             {
                 var rows = _databaseIO.GetRows(t);
-                InforationEvent?.Invoke(this, $"Starting with {t.FullTableName}. Rows: {rows}");
+                StartingWith?.Invoke(this, new Tuple<string, int>(t.FullTableName, rows));
                 _databaseIO.CopyTable(t);
                 //System.Threading.Thread.Sleep(5000); // simulate long operation
-                InforationEvent?.Invoke(this, $"Coping {t.FullTableName} done.");
+                DoneWith?.Invoke(this, t.FullTableName);
             }
-            InforationEvent?.Invoke(this, "DONE!");
+            DoneWith?.Invoke(this, null);
             s.Stop();
             return s.Elapsed;
+        }
+
+        public void ProgressEvent (object sender, System.Data.SqlClient.SqlRowsCopiedEventArgs args)
+        {
+            RowsCopiedNotify?.Invoke(this, _databaseIO.BatchSize);
         }
     }
 }

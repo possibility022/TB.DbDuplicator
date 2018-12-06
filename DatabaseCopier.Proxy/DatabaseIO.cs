@@ -17,6 +17,10 @@ namespace DatabaseCopier.Proxy
         private const int ParentObjectId = 4;
         private const int ReferenceObjectId = 12;
 
+        public Action<object, SqlRowsCopiedEventArgs> ProgressEvent = null;
+        
+        public int BatchSize = 30000;
+        public int TimeOut = 60 * 20;
 
 
         public DatabaseIO(string sourceConnectionString, string targetConnectionString)
@@ -133,7 +137,7 @@ namespace DatabaseCopier.Proxy
                     CommandText = $"SELECT * from " + table.FullTableName,
                     CommandType = CommandType.Text,
                     Connection = connection
-                };                
+                };
 
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -141,14 +145,18 @@ namespace DatabaseCopier.Proxy
                     using (var bulkCopy =
                         new SqlBulkCopy(_targetConnectionString, SqlBulkCopyOptions.KeepIdentity))
                     {
-                        bulkCopy.BulkCopyTimeout = 60 * 20;
+                        bulkCopy.BulkCopyTimeout = TimeOut;
                         bulkCopy.DestinationTableName = table.FullTableName;
-                        bulkCopy.BatchSize = 30000;
-                        bulkCopy.SqlRowsCopied += BulkCopy_SqlRowsCopied;
-                        bulkCopy.WriteToServer(reader);
-                        bulkCopy.SqlRowsCopied -= BulkCopy_SqlRowsCopied;
-                    }
+                        bulkCopy.BatchSize = BatchSize;
+                        bulkCopy.NotifyAfter = BatchSize;
+                        if (ProgressEvent != null)
+                            bulkCopy.SqlRowsCopied += ProgressEvent.Invoke;
 
+                        bulkCopy.WriteToServer(reader);
+
+                        if (ProgressEvent != null)
+                            bulkCopy.SqlRowsCopied -= ProgressEvent.Invoke;
+                    }
                 }
             }
         }
@@ -175,11 +183,6 @@ namespace DatabaseCopier.Proxy
             }
 
             return rows;
-        }
-
-        private void BulkCopy_SqlRowsCopied(object sender, SqlRowsCopiedEventArgs e)
-        {
-            Console.WriteLine(e.RowsCopied);
         }
     }
 }

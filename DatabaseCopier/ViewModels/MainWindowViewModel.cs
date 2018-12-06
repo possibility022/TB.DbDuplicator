@@ -83,11 +83,25 @@ namespace DatabaseCopier.ViewModels
         }
 
         private bool _startEnabled = false;
+
+
+
         public bool StartEnabled
         {
             get => _startEnabled;
             set => SetProperty(ref _startEnabled, value);
         }
+
+        private int _tablesCopied;
+        private int _allTablesToCopy;
+        private int _progressBar = 0;
+        private int _rowsToCopy = 1;
+
+        public int TablesCopied { get => _tablesCopied; set => SetProperty(ref _tablesCopied, value); }
+        public int AllTablesToCopy { get => _allTablesToCopy; private set => SetProperty(ref _allTablesToCopy, value); }
+        public int ProgressBar { get => _progressBar; private set => SetProperty(ref _progressBar, value); }
+        public int RowsToCopy { get => _rowsToCopy; private set => SetProperty(ref _rowsToCopy, value); }
+
 
         public MainWindowViewModel()
         {
@@ -95,6 +109,7 @@ namespace DatabaseCopier.ViewModels
             TablesToIgnore = new ObservableCollection<TableNode>();
             DatabaseDestinationList = new ObservableCollection<string>();
             DatabaseSourceList = new ObservableCollection<string>();
+            _infoMessageBuffer = new StringBuilder();
             LoadCacheFile();
         }
 
@@ -164,8 +179,9 @@ namespace DatabaseCopier.ViewModels
             Engine engine = null;
             try
             {
+                StartEnabled = false;
                 InfoText = string.Empty;
-                _infoMessageBuffer = new StringBuilder();
+                _infoMessageBuffer.Clear();
 
                 if (!_databaseSourceList.Contains(DatabaseSource) && !string.IsNullOrEmpty(DatabaseSource))
                     _databaseSourceList.Add(DatabaseSource);
@@ -180,7 +196,8 @@ namespace DatabaseCopier.ViewModels
                     .ToList();
 
                 engine = new Engine(_databaseIO, tables);
-                engine.InforationEvent += Engine_OnTableCopied;
+                engine.StartingWith += Engine_StartingWith;
+                engine.RowsCopiedNotify += Engine_RowsCopiedNotify;
 
                 var task = engine.StartAsync();
                 UpdateCacheFile();
@@ -191,9 +208,6 @@ namespace DatabaseCopier.ViewModels
             }
             catch (Exception ex)
             {
-                if (engine != null)
-                    engine.InforationEvent -= Engine_OnTableCopied;
-
                 _infoMessageBuffer.AppendLine(ex.Message);
                 _infoMessageBuffer.AppendLine(ex.StackTrace);
 
@@ -210,11 +224,28 @@ namespace DatabaseCopier.ViewModels
                 InfoText = _infoMessageBuffer.ToString();
                 return false;
             }
+            finally
+            {
+                if (engine != null)
+                {
+                    engine.StartingWith -= Engine_StartingWith;
+                    engine.RowsCopiedNotify -= Engine_RowsCopiedNotify;
+                }
+
+                StartEnabled = true;
+            }
         }
 
-        private void Engine_OnTableCopied(object sender, string e)
+        private void Engine_RowsCopiedNotify(object sender, int e)
         {
-            _infoMessageBuffer.AppendLine(e);
+            ProgressBar += e;
+        }
+
+        private void Engine_StartingWith(object sender, Tuple<string, int> args)
+        {
+            ProgressBar = 0;
+            RowsToCopy = args.Item2;
+            _infoMessageBuffer.AppendLine($"Starting with: {args.Item1}. Rows: {args.Item2}");
             InfoText = _infoMessageBuffer.ToString();
         }
     }

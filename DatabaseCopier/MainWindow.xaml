@@ -8,8 +8,9 @@
     xmlns:viewmodels="clr-namespace:DatabaseCopier.ViewModels"
     Title="MainWindow"
     Width="800"
-    Height="450"
+    Height="550"
     mc:Ignorable="d">
+
     <Grid Margin="10">
 
         <Grid.RowDefinitions>
@@ -18,6 +19,8 @@
             <RowDefinition />
             <RowDefinition Height="Auto" />
             <RowDefinition />
+            <RowDefinition Height="20" />
+            <RowDefinition Height="30" />
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition />
@@ -52,12 +55,14 @@
             <ComboBox
                 Grid.Row="0"
                 Grid.Column="1"
+                Margin="0,0,0,1"
                 IsEditable="True"
                 ItemsSource="{Binding DatabaseSourceList}"
                 Text="{Binding DatabaseSource, UpdateSourceTrigger=PropertyChanged}" />
             <ComboBox
                 Grid.Row="1"
                 Grid.Column="1"
+                Margin="0,1,0,0"
                 IsEditable="True"
                 ItemsSource="{Binding DatabaseDestinationList}"
                 Text="{Binding DatabaseDestination, UpdateSourceTrigger=PropertyChanged}" />
@@ -82,11 +87,16 @@
         <StackPanel
             Grid.Row="2"
             Grid.Column="1"
-            MinWidth="50"
-            Margin="10,0,10,0"
+            MinWidth="100"
             Orientation="Vertical">
-            <Button Click="MoveToToCopy_Click" Content="&lt;-" />
-            <Button Click="MoveToIgnore_Click" Content="-&gt;" />
+            <Button
+                Margin="10"
+                Click="MoveToToCopy_Click"
+                Content="&lt;-" />
+            <Button
+                Margin="10"
+                Click="MoveToIgnore_Click"
+                Content="-&gt;" />
 
         </StackPanel>
 
@@ -116,7 +126,7 @@
                 Height="40"
                 Click="Start_Click"
                 Content="Start"
-                IsEnabled="True" />
+                IsEnabled="{Binding StartEnabled}" />
 
 
         </StackPanel>
@@ -124,6 +134,25 @@
         <ScrollViewer Grid.Row="4" Grid.ColumnSpan="3">
             <TextBlock Text="{Binding InfoText}" />
         </ScrollViewer>
+
+        <ProgressBar
+            Grid.Row="5"
+            Grid.ColumnSpan="3"
+            Maximum="{Binding RowsToCopy, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
+            Value="{Binding ProgressBar, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}" />
+
+        <StackPanel
+            Grid.Row="6"
+            Grid.ColumnSpan="3"
+            HorizontalAlignment="Center"
+            Orientation="Horizontal">
+
+            <Label Content="Tables: " />
+            <Label Content="{Binding TablesCopied}" />
+            <Label Content=" / " />
+            <Label Content="{Binding AllTablesToCopy}" />
+
+        </StackPanel>
 
     </Grid>
 </Window>
