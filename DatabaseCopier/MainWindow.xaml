@@ -81,7 +81,7 @@
         <ListView
             Grid.Row="2"
             Grid.Column="0"
-            ItemsSource="{Binding TablesToCopy}"
+            ItemsSource="{Binding TablesToCopy, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
             SelectedItem="{Binding SelectedInToCopyList}" />
 
         <StackPanel
@@ -103,7 +103,7 @@
         <ListView
             Grid.Row="2"
             Grid.Column="2"
-            ItemsSource="{Binding TablesToIgnore}"
+            ItemsSource="{Binding TablesToIgnore, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
             SelectedItem="{Binding SelectedInToIgnore}" />
 
         <StackPanel
@@ -119,14 +119,15 @@
                 Width="100"
                 Height="40"
                 Click="Load_Click"
-                Content="Load" />
+                Content="Load"
+                IsEnabled="{Binding LoadEnabled, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}" />
 
             <Button
                 Width="100"
                 Height="40"
                 Click="Start_Click"
                 Content="Start"
-                IsEnabled="{Binding StartEnabled}" />
+                IsEnabled="{Binding StartEnabled, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}" />
 
 
         </StackPanel>

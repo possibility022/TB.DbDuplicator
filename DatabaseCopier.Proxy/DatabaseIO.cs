@@ -148,7 +148,7 @@ namespace DatabaseCopier.Proxy
                         bulkCopy.BulkCopyTimeout = TimeOut;
                         bulkCopy.DestinationTableName = table.FullTableName;
                         bulkCopy.BatchSize = BatchSize;
-                        bulkCopy.NotifyAfter = BatchSize;
+                        bulkCopy.NotifyAfter = 1000;
                         if (ProgressEvent != null)
                             bulkCopy.SqlRowsCopied += ProgressEvent.Invoke;
 
@@ -161,14 +161,14 @@ namespace DatabaseCopier.Proxy
             }
         }
 
-        public int GetRows(TableNode table)
+        public long GetRows(TableNode table)
         {
-            int rows = -1;
+            long rows = -1;
             using (var connection = new SqlConnection(_sourceConnectionString))
             {
                 var count = new SqlCommand()
                 {
-                    CommandText = "SELECT Count(*) FROM " + table.FullTableName,
+                    CommandText = "SELECT Count_BIG(*) FROM " + table.FullTableName,
                     CommandType = CommandType.Text,
                     Connection = connection
                 };
@@ -178,7 +178,7 @@ namespace DatabaseCopier.Proxy
                 using (var cReader = count.ExecuteReader())
                 {
                     cReader.Read();
-                    rows = cReader.GetInt32(0);
+                    rows = cReader.GetInt64(0);
                 }
             }
 

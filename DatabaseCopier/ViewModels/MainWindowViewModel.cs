@@ -65,14 +65,14 @@ namespace DatabaseCopier.ViewModels
         public ObservableCollection<string> DatabaseSourceList
         {
             get { return _databaseSourceList; }
-            set { SetProperty(ref _databaseSourceList, value); }
+            private set { SetProperty(ref _databaseSourceList, value); }
         }
 
         private ObservableCollection<string> _databaseDestinationList;
         public ObservableCollection<string> DatabaseDestinationList
         {
             get { return _databaseDestinationList; }
-            set { SetProperty(ref _databaseDestinationList, value); }
+            private set { SetProperty(ref _databaseDestinationList, value); }
         }
 
         private string _databaseDestination;
@@ -83,24 +83,29 @@ namespace DatabaseCopier.ViewModels
         }
 
         private bool _startEnabled = false;
-
-
+        private bool _loadEnabled = true;
 
         public bool StartEnabled
         {
             get => _startEnabled;
-            set => SetProperty(ref _startEnabled, value);
+            private set => SetProperty(ref _startEnabled, value);
+        }
+
+        public bool LoadEnabled
+        {
+            get => _loadEnabled;
+            private set => SetProperty(ref _loadEnabled, value);
         }
 
         private int _tablesCopied;
         private int _allTablesToCopy;
-        private int _progressBar = 0;
-        private int _rowsToCopy = 1;
+        private long _progressBar = 0;
+        private long _rowsToCopy = 1;
 
         public int TablesCopied { get => _tablesCopied; set => SetProperty(ref _tablesCopied, value); }
         public int AllTablesToCopy { get => _allTablesToCopy; private set => SetProperty(ref _allTablesToCopy, value); }
-        public int ProgressBar { get => _progressBar; private set => SetProperty(ref _progressBar, value); }
-        public int RowsToCopy { get => _rowsToCopy; private set => SetProperty(ref _rowsToCopy, value); }
+        public long ProgressBar { get => _progressBar; private set => SetProperty(ref _progressBar, value); }
+        public long RowsToCopy { get => _rowsToCopy; private set => SetProperty(ref _rowsToCopy, value); }
 
 
         public MainWindowViewModel()
@@ -116,25 +121,28 @@ namespace DatabaseCopier.ViewModels
         public void Load()
         {
             _databaseIO = new DatabaseIO(DatabaseSource, DatabaseDestination);
+            InfoText = string.Empty;
+
             try
             {
                 allLoadedTables = _databaseIO.GetTables();
+
+                foreach (var t in allLoadedTables)
+                {
+                    if (!CacheFile.Instance.LastIgnoredTables.Contains(t.Value.TableName))
+                        TablesToCopy.Add(t.Value);
+                    else
+                        TablesToIgnore.Add(t.Value);
+                }
+
+                StartEnabled = TablesToCopy.Any();
             }
             catch (Exception ex)
             {
                 _infoMessageBuffer.AppendLine(ex.Message);
                 _infoMessageBuffer.AppendLine(ex.StackTrace);
+                InfoText = _infoMessageBuffer.ToString();
             }
-
-            foreach (var t in allLoadedTables)
-            {
-                if (!CacheFile.Instance.LastIgnoredTables.Contains(t.Value.TableName))
-                    TablesToCopy.Add(t.Value);
-                else
-                    TablesToIgnore.Add(t.Value);
-            }
-
-            StartEnabled = TablesToCopy.Any();
         }
 
         public void MoveToIgnore()
@@ -180,7 +188,11 @@ namespace DatabaseCopier.ViewModels
             try
             {
                 StartEnabled = false;
+                LoadEnabled = false;
                 InfoText = string.Empty;
+                TablesCopied = 0;
+                AllTablesToCopy = TablesToCopy.Count;
+
                 _infoMessageBuffer.Clear();
 
                 if (!_databaseSourceList.Contains(DatabaseSource) && !string.IsNullOrEmpty(DatabaseSource))
@@ -198,6 +210,7 @@ namespace DatabaseCopier.ViewModels
                 engine = new Engine(_databaseIO, tables);
                 engine.StartingWith += Engine_StartingWith;
                 engine.RowsCopiedNotify += Engine_RowsCopiedNotify;
+                engine.DoneWith += Engine_DoneWith;
 
                 var task = engine.StartAsync();
                 UpdateCacheFile();
@@ -232,16 +245,27 @@ namespace DatabaseCopier.ViewModels
                     engine.RowsCopiedNotify -= Engine_RowsCopiedNotify;
                 }
 
+                LoadEnabled = true;
                 StartEnabled = true;
             }
         }
 
-        private void Engine_RowsCopiedNotify(object sender, int e)
+        private void Engine_DoneWith(object sender, string e)
         {
-            ProgressBar += e;
+            TablesCopied += 1;
+
+            if (TablesCopied == AllTablesToCopy)
+            {
+                ProgressBar = RowsToCopy;
+            }
         }
 
-        private void Engine_StartingWith(object sender, Tuple<string, int> args)
+        private void Engine_RowsCopiedNotify(object sender, long e)
+        {
+            ProgressBar = e;
+        }
+
+        private void Engine_StartingWith(object sender, Tuple<string, long> args)
         {
             ProgressBar = 0;
             RowsToCopy = args.Item2;
