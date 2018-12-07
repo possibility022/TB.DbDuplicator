@@ -10,6 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
+using System.Windows;
 
 namespace DatabaseCopier.ViewModels
 {
@@ -85,6 +86,13 @@ namespace DatabaseCopier.ViewModels
 
         private bool _startEnabled = false;
         private bool _loadEnabled = true;
+        private string _timeout = 30.ToString();
+
+        public string Timeout
+        {
+            get => _timeout.ToString();
+            set => SetProperty(ref _timeout, value);
+        }
 
         public bool StartEnabled
         {
@@ -111,7 +119,7 @@ namespace DatabaseCopier.ViewModels
         public int TimeSecounds { get => _timeSecounds; set => SetProperty(ref _timeSecounds, value); }
 
         Timer _timer;
-        
+
 
         public MainWindowViewModel()
         {
@@ -196,6 +204,13 @@ namespace DatabaseCopier.ViewModels
 
         internal async Task<bool> Start()
         {
+
+            if (int.TryParse(Timeout, out var timeout) == false)
+            {
+                MessageBox.Show("Cannot parse {Timeout} to int. Please set correct value. Numeric value in minutes.");
+                return false;
+            }
+
             Engine engine = null;
             try
             {
@@ -204,7 +219,9 @@ namespace DatabaseCopier.ViewModels
                 LoadEnabled = false;
                 InfoText = string.Empty;
                 TablesCopied = 0;
+                engine.Timeout = timeout * 60;
                 AllTablesToCopy = TablesToCopy.Count;
+                
 
                 _timer.Start();
 

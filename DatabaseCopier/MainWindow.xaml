@@ -103,6 +103,9 @@
                 Click="MoveToIgnore_Click"
                 Content="-&gt;" />
 
+            <Label Content="Timeout per table (min):" />
+            <TextBox Margin="10,0,10,0" Text="{Binding Timeout}" />
+
         </StackPanel>
 
         <ListView
@@ -133,7 +136,6 @@
                 Click="Start_Click"
                 Content="Start"
                 IsEnabled="{Binding StartEnabled, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}" />
-
 
         </StackPanel>
 

@@ -12,6 +12,8 @@ namespace DatabaseCopier
         private readonly DatabaseIO _databaseIO;
         private readonly IEnumerable<TableNode> _tablesToCopy;
 
+        public int Timeout;
+
         public event EventHandler<long> RowsCopiedNotify;
         public event EventHandler<Tuple<string, long>> StartingWith;
         public event EventHandler<string> DoneWith;
@@ -37,6 +39,7 @@ namespace DatabaseCopier
             {
                 var rows = _databaseIO.GetRows(t);
                 StartingWith?.Invoke(this, new Tuple<string, long>(t.FullTableName, rows));
+                _databaseIO.TimeOut = Timeout;
                 _databaseIO.CopyTable(t);
                 //System.Threading.Thread.Sleep(5000); // simulate long operation
                 DoneWith?.Invoke(this, t.FullTableName);
