@@ -197,9 +197,14 @@ namespace DatabaseCopier.ViewModels
             if (File.Exists(fileName))
             {
                 CacheFile.Instance = JsonConvert.DeserializeObject<CacheFile>(File.ReadAllText(fileName));
-                _databaseDestinationList = new ObservableCollection<string>(CacheFile.Instance.DatabaseDestination);
-                _databaseSourceList = new ObservableCollection<string>(CacheFile.Instance.DatabaseSource);
+                DatabaseDestinationList = new ObservableCollection<string>(CacheFile.Instance.DatabaseDestination);
+                DatabaseSourceList = new ObservableCollection<string>(CacheFile.Instance.DatabaseSource);
             }
+
+            string exampleConnectionString = "Server=myServerAddress;Database=myDataBase;Trusted_Connection=True;";
+
+            DatabaseSourceList.Add(exampleConnectionString);
+            DatabaseDestinationList.Add(exampleConnectionString);
         }
 
         internal async Task<bool> Start()
@@ -221,7 +226,7 @@ namespace DatabaseCopier.ViewModels
                 TablesCopied = 0;
                 engine.Timeout = timeout * 60;
                 AllTablesToCopy = TablesToCopy.Count;
-                
+
 
                 _timer.Start();
 
