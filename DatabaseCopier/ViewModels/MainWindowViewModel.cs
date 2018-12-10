@@ -1,4 +1,5 @@
-﻿using DatabaseCopier.Models;
+﻿using DatabaseCopier.Commands;
+using DatabaseCopier.Models;
 using DatabaseCopier.Proxy;
 using Newtonsoft.Json;
 using Prism.Mvvm;
@@ -11,12 +12,15 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
 using System.Windows;
+using System.Windows.Input;
 
 namespace DatabaseCopier.ViewModels
 {
     class MainWindowViewModel : BindableBase
     {
         private const string fileName = "cache.cache";
+
+        private bool _inProgress = false;
 
         private ObservableCollection<TableNode> _tablesToCopy;
         private ObservableCollection<TableNode> _tablesToIgnore;
@@ -84,26 +88,25 @@ namespace DatabaseCopier.ViewModels
             set { SetProperty(ref _databaseDestination, value); }
         }
 
-        private bool _startEnabled = false;
-        private bool _loadEnabled = true;
         private string _timeout = 30.ToString();
-
         public string Timeout
         {
             get => _timeout.ToString();
             set => SetProperty(ref _timeout, value);
         }
 
-        public bool StartEnabled
+        private ICommand _startCommand;
+        public ICommand StartCommand
         {
-            get => _startEnabled;
-            private set => SetProperty(ref _startEnabled, value);
+            get { return _startCommand; }
+            set { SetProperty(ref _startCommand, value); }
         }
 
-        public bool LoadEnabled
+        private ICommand _loadCommand;
+        public ICommand LoadCommand
         {
-            get => _loadEnabled;
-            private set => SetProperty(ref _loadEnabled, value);
+            get { return _loadCommand; }
+            set { SetProperty(ref _loadCommand, value); }
         }
 
         private int _tablesCopied;
@@ -127,10 +130,29 @@ namespace DatabaseCopier.ViewModels
             TablesToIgnore = new ObservableCollection<TableNode>();
             DatabaseDestinationList = new ObservableCollection<string>();
             DatabaseSourceList = new ObservableCollection<string>();
+
+            StartCommand = new RelayCommand<Task<bool>>(Start, CanStart);
+            LoadCommand = new RelayCommand<bool>(Load, CanLoad);
+
             _infoMessageBuffer = new StringBuilder();
             _timer = new Timer(1000);
             _timer.Elapsed += _timer_Elapsed;
             LoadCacheFile();
+        }
+
+        private bool CanStart()
+        {
+            return
+                DatabaseDestination == _databaseIO?.TargetConnectionString
+                && TablesToCopy.Any()
+                && !_inProgress;
+        }
+
+        private bool CanLoad()
+        {
+            return !_inProgress &&
+                !string.IsNullOrEmpty(DatabaseSource) &&
+                !string.IsNullOrEmpty(DatabaseDestination);
         }
 
         private void _timer_Elapsed(object sender, ElapsedEventArgs e)
@@ -138,13 +160,17 @@ namespace DatabaseCopier.ViewModels
             TimeSecounds += 1;
         }
 
-        public void Load()
+        public bool Load()
         {
             _databaseIO = new DatabaseIO(DatabaseSource, DatabaseDestination);
             InfoText = string.Empty;
 
             try
             {
+                allLoadedTables?.Clear();
+                TablesToIgnore?.Clear();
+                TablesToCopy?.Clear();
+
                 allLoadedTables = _databaseIO.GetTables();
 
                 foreach (var t in allLoadedTables)
@@ -154,14 +180,14 @@ namespace DatabaseCopier.ViewModels
                     else
                         TablesToIgnore.Add(t.Value);
                 }
-
-                StartEnabled = TablesToCopy.Any();
+                return true;
             }
             catch (Exception ex)
             {
                 _infoMessageBuffer.AppendLine(ex.Message);
                 _infoMessageBuffer.AppendLine(ex.StackTrace);
                 InfoText = _infoMessageBuffer.ToString();
+                return false;
             }
         }
 
@@ -201,10 +227,8 @@ namespace DatabaseCopier.ViewModels
                 DatabaseSourceList = new ObservableCollection<string>(CacheFile.Instance.DatabaseSource);
             }
 
-            string exampleConnectionString = "Server=myServerAddress;Database=myDataBase;Trusted_Connection=True;";
-
-            DatabaseSourceList.Add(exampleConnectionString);
-            DatabaseDestinationList.Add(exampleConnectionString);
+            DatabaseSourceList.Add("Server=myServerAddress;Database=myDataBase;Trusted_Connection=True;");
+            DatabaseDestinationList.Add("Server=myServerAddress;Database=myDataBase;");
         }
 
         internal async Task<bool> Start()
@@ -220,13 +244,10 @@ namespace DatabaseCopier.ViewModels
             try
             {
                 TimeSecounds = 0;
-                StartEnabled = false;
-                LoadEnabled = false;
+                _inProgress = true;
                 InfoText = string.Empty;
                 TablesCopied = 0;
-                engine.Timeout = timeout * 60;
                 AllTablesToCopy = TablesToCopy.Count;
-
 
                 _timer.Start();
 
@@ -245,6 +266,7 @@ namespace DatabaseCopier.ViewModels
                     .ToList();
 
                 engine = new Engine(_databaseIO, tables);
+                engine.Timeout = timeout * 60;
                 engine.StartingWith += Engine_StartingWith;
                 engine.RowsCopiedNotify += Engine_RowsCopiedNotify;
                 engine.DoneWith += Engine_DoneWith;
@@ -283,19 +305,16 @@ namespace DatabaseCopier.ViewModels
                 }
 
                 _timer.Stop();
-                LoadEnabled = true;
-                StartEnabled = true;
+                _inProgress = false;
             }
         }
 
         private void Engine_DoneWith(object sender, string e)
         {
-            TablesCopied += 1;
+            if (TablesToCopy.Any(t => t.FullTableName == e))
+                TablesCopied += 1;
 
-            if (TablesCopied == AllTablesToCopy)
-            {
-                ProgressBar = RowsToCopy;
-            }
+            ProgressBar = RowsToCopy;
         }
 
         private void Engine_RowsCopiedNotify(object sender, long e)

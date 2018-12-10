@@ -8,8 +8,8 @@ namespace DatabaseCopier.Proxy
 {
     public class DatabaseIO
     {
-        private readonly string _sourceConnectionString;
-        private readonly string _targetConnectionString;
+        public readonly string SourceConnectionString;
+        public readonly string TargetConnectionString;
 
         private const int ObjectName = 0;
         private const int ObjectId = 1;
@@ -25,8 +25,8 @@ namespace DatabaseCopier.Proxy
 
         public DatabaseIO(string sourceConnectionString, string targetConnectionString)
         {
-            _sourceConnectionString = sourceConnectionString;
-            _targetConnectionString = targetConnectionString;
+            SourceConnectionString = sourceConnectionString;
+            TargetConnectionString = targetConnectionString;
         }
 
         public Dictionary<int, TableSchema> GetSchemas()
@@ -35,7 +35,7 @@ namespace DatabaseCopier.Proxy
 
             using (var connection =
                 new SqlConnection(
-                    _sourceConnectionString)
+                    SourceConnectionString)
             )
             {
                 var cmd = new SqlCommand
@@ -68,7 +68,7 @@ namespace DatabaseCopier.Proxy
 
             using (var connection =
                 new SqlConnection(
-                    _sourceConnectionString)
+                    SourceConnectionString)
             )
             {
                 var cmd = new SqlCommand
@@ -102,7 +102,7 @@ namespace DatabaseCopier.Proxy
 
             var keys = new List<ForeignKey>();
 
-            using (var connection = new SqlConnection(_sourceConnectionString))
+            using (var connection = new SqlConnection(SourceConnectionString))
             {
                 connection.Open();
 
@@ -128,7 +128,7 @@ namespace DatabaseCopier.Proxy
 
         public void CopyTable(TableNode table)
         {
-            using (var connection = new SqlConnection(_sourceConnectionString))
+            using (var connection = new SqlConnection(SourceConnectionString))
             {
                 connection.Open();
 
@@ -143,7 +143,7 @@ namespace DatabaseCopier.Proxy
                 {
 
                     using (var bulkCopy =
-                        new SqlBulkCopy(_targetConnectionString, SqlBulkCopyOptions.KeepIdentity))
+                        new SqlBulkCopy(TargetConnectionString, SqlBulkCopyOptions.KeepIdentity))
                     {
                         bulkCopy.BulkCopyTimeout = TimeOut;
                         bulkCopy.DestinationTableName = table.FullTableName;
@@ -164,7 +164,7 @@ namespace DatabaseCopier.Proxy
         public long GetRows(TableNode table)
         {
             long rows = -1;
-            using (var connection = new SqlConnection(_sourceConnectionString))
+            using (var connection = new SqlConnection(SourceConnectionString))
             {
                 var count = new SqlCommand()
                 {

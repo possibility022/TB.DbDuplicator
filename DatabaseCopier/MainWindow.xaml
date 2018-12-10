@@ -127,15 +127,15 @@
                 Width="100"
                 Height="40"
                 Click="Load_Click"
-                Content="Load"
-                IsEnabled="{Binding LoadEnabled, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}" />
+                Command="{Binding LoadCommand}"
+                Content="Load" />
 
             <Button
                 Width="100"
                 Height="40"
                 Click="Start_Click"
-                Content="Start"
-                IsEnabled="{Binding StartEnabled, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}" />
+                Command="{Binding StartCommand}"
+                Content="Start" />
 
         </StackPanel>
 
