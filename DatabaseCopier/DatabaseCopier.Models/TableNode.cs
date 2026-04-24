@@ -12,13 +12,19 @@ namespace DatabaseCopier.Models
 
         public ICollection<TableNode> Parents { get; set; } = new List<TableNode>();
 
+        /// <summary>
+        /// Set when this table is the main side of a system-versioned temporal relationship.
+        /// Points to the corresponding history table node.
+        /// </summary>
+        public TableNode HistoryTableNode { get; set; }
+
 
         public TableNode(int tableId, string tableName, TableSchema schema)
         {
             TableName = tableName;
             TableId = tableId;
             Schema = schema;
-            FullTableName = $"{Schema.Name}.{TableName}";
+            FullTableName = $"[{Schema.Name}].[{TableName}]";
         }
 
         public override string ToString() => FullTableName;

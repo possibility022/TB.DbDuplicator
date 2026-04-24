@@ -37,6 +37,7 @@ namespace DatabaseCopier
             s.Start();
             foreach (var t in _tablesToCopy)
             {
+                _databaseIO.CreateTableIfNotExists(t);
                 var rows = _databaseIO.GetRows(t);
                 StartingWith?.Invoke(this, new Tuple<string, long>(t.FullTableName, rows));
                 _databaseIO.TimeOut = Timeout;

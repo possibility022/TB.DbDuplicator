@@ -83,6 +83,7 @@
     <Compile Include="CacheFile.cs" />
     <Compile Include="Commands\RelayCommand.cs" />
     <Compile Include="Converters\SecoundsToTimeConverter.cs" />
+    <Compile Include="DatabaseCopier.Proxy\DatabaseIO.cs" />
     <Compile Include="Engine.cs" />
     <Compile Include="ViewModels\MainWindowViewModel.cs" />
     <Page Include="MainWindow.xaml">
