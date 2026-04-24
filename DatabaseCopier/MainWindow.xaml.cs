@@ -47,6 +47,11 @@ namespace DatabaseCopier
             ViewModel.Start();
         }
 
+        private void Stop_Click(object sender, RoutedEventArgs e)
+        {
+            ViewModel.Stop();
+        }
+
         private void Load_Click(object sender, RoutedEventArgs e)
         {
             ViewModel.Load();

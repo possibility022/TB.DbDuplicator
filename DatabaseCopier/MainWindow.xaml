@@ -137,6 +137,13 @@
                 Command="{Binding StartCommand}"
                 Content="Start" />
 
+            <Button
+                Width="100"
+                Height="40"
+                Click="Stop_Click"
+                Command="{Binding StopCommand}"
+                Content="Stop" />
+
         </StackPanel>
 
         <ScrollViewer Grid.Row="4" Grid.ColumnSpan="3">

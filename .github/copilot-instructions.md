@@ -15,8 +15,8 @@ A .NET Framework 4.8 WPF desktop application for bulk copying data between SQL S
 
 ### DatabaseCopier (UI Layer)
 - `MainWindow.xaml` / `MainWindow.xaml.cs` - Main application window
-- `ViewModels/MainWindowViewModel.cs` - MVVM ViewModel with commands and bindings
-- `Engine.cs` - Orchestrates the copy process with progress events
+- `ViewModels/MainWindowViewModel.cs` - MVVM ViewModel with commands (Start, Stop, Load)
+- `Engine.cs` - Orchestrates the copy process with progress events and cancellation support
 - `CacheFile.cs` - Persists connection strings and ignored tables to `cache.cache`
 - `Commands/RelayCommand.cs` - ICommand implementation
 - `Converters/SecoundsToTimeConverter.cs` - Time display converter
@@ -51,6 +51,7 @@ A .NET Framework 4.8 WPF desktop application for bulk copying data between SQL S
 4. **Auto Schema/Table Creation** - Creates missing structures in target DB
 5. **Progress Tracking** - Events for row progress and table completion
 6. **Connection Caching** - Saves settings to `cache.cache` (JSON)
+7. **Stop/Cancel** - Cancellation support via `CancellationToken`; stops after current table completes
 
 ### Temporal Table Handling
 The tool properly handles SQL Server system-versioned temporal tables:

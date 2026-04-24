@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+using System.Threading;
 
 namespace DatabaseCopier.Proxy
 {
@@ -331,7 +332,7 @@ namespace DatabaseCopier.Proxy
             return null;
         }
 
-        public void CopyTable(TableNode table)
+        public void CopyTable(TableNode table, CancellationToken cancellationToken = default)
         {
             var temporalInfo = GetTemporalInfo(table);
 
@@ -374,8 +375,11 @@ namespace DatabaseCopier.Proxy
                             disabledVersioning = true;
                         }
 
+                        bool copyCompleted = false;
                         try
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
+
                             using (var bulkCopy = new SqlBulkCopy(targetConnection, SqlBulkCopyOptions.KeepIdentity, null))
                             {
                                 bulkCopy.BulkCopyTimeout = TimeOut;
@@ -390,6 +394,7 @@ namespace DatabaseCopier.Proxy
                                     bulkCopy.ColumnMappings.Add(reader.GetName(i), reader.GetName(i));
 
                                 bulkCopy.WriteToServer(reader);
+                                copyCompleted = true;
 
                                 if (ProgressEvent != null)
                                     bulkCopy.SqlRowsCopied -= ProgressEvent.Invoke;
@@ -397,8 +402,8 @@ namespace DatabaseCopier.Proxy
                         }
                         finally
                         {
-                            // Re-enable system versioning if it was disabled, or enable it for new temporal tables
-                            if (disabledVersioning || (temporalInfo != null && table.HistoryTableNode != null))
+                            // Re-enable system versioning if it was disabled and copy completed successfully
+                            if (copyCompleted && (disabledVersioning || (temporalInfo != null && table.HistoryTableNode != null)))
                             {
                                 // Use HistoryTableNode from TableNode (already linked) for the history table reference
                                 var historyRef = table.HistoryTableNode != null

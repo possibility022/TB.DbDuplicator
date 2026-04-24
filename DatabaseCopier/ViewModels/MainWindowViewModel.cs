@@ -21,6 +21,7 @@ namespace DatabaseCopier.ViewModels
         private const string fileName = "cache.cache";
 
         private bool _inProgress = false;
+        private Engine _currentEngine;
 
         private ObservableCollection<TableNode> _tablesToCopy;
         private ObservableCollection<TableNode> _tablesToIgnore;
@@ -109,6 +110,13 @@ namespace DatabaseCopier.ViewModels
             set { SetProperty(ref _loadCommand, value); }
         }
 
+        private ICommand _stopCommand;
+        public ICommand StopCommand
+        {
+            get { return _stopCommand; }
+            set { SetProperty(ref _stopCommand, value); }
+        }
+
         private int _tablesCopied;
         private int _allTablesToCopy;
         private long _progressBar = 0;
@@ -133,6 +141,7 @@ namespace DatabaseCopier.ViewModels
 
             StartCommand = new RelayCommand<Task<bool>>(Start, CanStart);
             LoadCommand = new RelayCommand<bool>(Load, CanLoad);
+            StopCommand = new RelayCommand<bool>(Stop, CanStop);
 
             _infoMessageBuffer = new StringBuilder();
             _timer = new Timer(1000);
@@ -146,6 +155,19 @@ namespace DatabaseCopier.ViewModels
                 DatabaseDestination == _databaseIO?.TargetConnectionString
                 && TablesToCopy.Any()
                 && !_inProgress;
+        }
+
+        private bool CanStop()
+        {
+            return _inProgress && _currentEngine != null;
+        }
+
+        public bool Stop()
+        {
+            _currentEngine?.Stop();
+            _infoMessageBuffer.AppendLine("Stop requested...");
+            InfoText = _infoMessageBuffer.ToString();
+            return true;
         }
 
         private bool CanLoad()
@@ -240,7 +262,6 @@ namespace DatabaseCopier.ViewModels
                 return false;
             }
 
-            Engine engine = null;
             try
             {
                 TimeSecounds = 0;
@@ -265,13 +286,14 @@ namespace DatabaseCopier.ViewModels
                     .Except(_tablesToIgnore)
                     .ToList();
 
-                engine = new Engine(_databaseIO, tables);
-                engine.Timeout = timeout * 60;
-                engine.StartingWith += Engine_StartingWith;
-                engine.RowsCopiedNotify += Engine_RowsCopiedNotify;
-                engine.DoneWith += Engine_DoneWith;
+                _currentEngine = new Engine(_databaseIO, tables);
+                _currentEngine.Timeout = timeout * 60;
+                _currentEngine.StartingWith += Engine_StartingWith;
+                _currentEngine.RowsCopiedNotify += Engine_RowsCopiedNotify;
+                _currentEngine.DoneWith += Engine_DoneWith;
+                _currentEngine.Stopped += Engine_Stopped;
 
-                var task = engine.StartAsync();
+                var task = _currentEngine.StartAsync();
                 UpdateCacheFile();
 
                 await task;
@@ -298,15 +320,24 @@ namespace DatabaseCopier.ViewModels
             }
             finally
             {
-                if (engine != null)
+                if (_currentEngine != null)
                 {
-                    engine.StartingWith -= Engine_StartingWith;
-                    engine.RowsCopiedNotify -= Engine_RowsCopiedNotify;
+                    _currentEngine.StartingWith -= Engine_StartingWith;
+                    _currentEngine.RowsCopiedNotify -= Engine_RowsCopiedNotify;
+                    _currentEngine.DoneWith -= Engine_DoneWith;
+                    _currentEngine.Stopped -= Engine_Stopped;
+                    _currentEngine = null;
                 }
 
                 _timer.Stop();
                 _inProgress = false;
             }
+        }
+
+        private void Engine_Stopped(object sender, EventArgs e)
+        {
+            _infoMessageBuffer.AppendLine("Operation stopped by user.");
+            InfoText = _infoMessageBuffer.ToString();
         }
 
         private void Engine_DoneWith(object sender, string e)
