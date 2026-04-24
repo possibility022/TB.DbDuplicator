@@ -73,7 +73,7 @@ namespace DatabaseCopier.Proxy
             {
                 var cmd = new SqlCommand
                 {
-                    CommandText = "SELECT * FROM sys.tables",
+                    CommandText = "SELECT name, object_id, schema_id, temporal_type, history_table_id FROM sys.tables",
                     CommandType = CommandType.Text,
                     Connection = connection
                 };
@@ -84,13 +84,31 @@ namespace DatabaseCopier.Proxy
 
                 while (reader.Read())
                 {
-                    var tableName = reader.GetString(ObjectName);
+                    var tableName = reader.GetString(0);
                     if (ignoreTables == null || !ignoreTables.Contains(tableName))
                     {
-                        var tableId = reader.GetInt32(ObjectId);
-                        var schemaId = reader.GetInt32(SchemaId);
-                        tables.Add(tableId, new TableNode(tableId, tableName, schemas[schemaId]));
+                        var tableId = reader.GetInt32(1);
+                        var schemaId = reader.GetInt32(2);
+                        var temporalType = reader.GetByte(3);
+                        var historyTableId = reader.IsDBNull(4) ? (int?)null : reader.GetInt32(4);
+
+                        var node = new TableNode(tableId, tableName, schemas[schemaId]);
+                        // temporal_type = 2 means system-versioned temporal table
+                        if (temporalType == 2 && historyTableId.HasValue)
+                            node.HistoryTableId = historyTableId;
+
+                        tables.Add(tableId, node);
                     }
+                }
+            }
+
+            // Link temporal tables to their history tables
+            foreach (var table in tables.Values)
+            {
+                if (table.HistoryTableId.HasValue && tables.TryGetValue(table.HistoryTableId.Value, out var historyTable))
+                {
+                    table.HistoryTableNode = historyTable;
+                    historyTable.MainTemporalTableNode = table;
                 }
             }
 
@@ -379,15 +397,24 @@ namespace DatabaseCopier.Proxy
                         }
                         finally
                         {
-                            if (disabledVersioning)
+                            // Re-enable system versioning if it was disabled, or enable it for new temporal tables
+                            if (disabledVersioning || (temporalInfo != null && table.HistoryTableNode != null))
                             {
-                                var historyRef = temporalInfo.HistoryTableFullName != null
-                                    ? $"HISTORY_TABLE = {temporalInfo.HistoryTableFullName}, "
-                                    : "";
-                                using (var alterCmd = new SqlCommand(
-                                    $"ALTER TABLE {table.FullTableName} SET (SYSTEM_VERSIONING = ON ({historyRef}DATA_CONSISTENCY_CHECK = OFF))",
-                                    targetConnection))
-                                    alterCmd.ExecuteNonQuery();
+                                // Use HistoryTableNode from TableNode (already linked) for the history table reference
+                                var historyRef = table.HistoryTableNode != null
+                                    ? $"HISTORY_TABLE = {table.HistoryTableNode.FullTableName}, "
+                                    : (temporalInfo?.HistoryTableFullName != null 
+                                        ? $"HISTORY_TABLE = {temporalInfo.HistoryTableFullName}, " 
+                                        : "");
+                                
+                                // Only enable versioning if we have a history table reference and versioning was active in source
+                                if (disabledVersioning || !string.IsNullOrEmpty(historyRef))
+                                {
+                                    using (var alterCmd = new SqlCommand(
+                                        $"ALTER TABLE {table.FullTableName} SET (SYSTEM_VERSIONING = ON ({historyRef}DATA_CONSISTENCY_CHECK = OFF))",
+                                        targetConnection))
+                                        alterCmd.ExecuteNonQuery();
+                                }
                             }
                         }
                     }

@@ -16,6 +16,19 @@ namespace DatabaseCopier.Models
                 tables[foreignKey.OwnerTableId].Childrens.Add(tables[foreignKey.TargetTableId]);
                 tables[foreignKey.TargetTableId].Parents.Add(tables[foreignKey.OwnerTableId]);
             }
+
+            // Add temporal table relationships: history table must be copied before main table
+            foreach (var table in tables.Values)
+            {
+                if (table.HistoryTableNode != null && tables.ContainsKey(table.HistoryTableNode.TableId))
+                {
+                    // Main table depends on history table (history is a "child" that must be processed first)
+                    if (!table.Childrens.Contains(table.HistoryTableNode))
+                        table.Childrens.Add(table.HistoryTableNode);
+                    if (!table.HistoryTableNode.Parents.Contains(table))
+                        table.HistoryTableNode.Parents.Add(table);
+                }
+            }
         }
 
         public Hierarchy(IDictionary<int, TableNode> tables, IEnumerable<ForeignKey> keys)

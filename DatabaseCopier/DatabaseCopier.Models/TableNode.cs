@@ -18,6 +18,17 @@ namespace DatabaseCopier.Models
         /// </summary>
         public TableNode HistoryTableNode { get; set; }
 
+        /// <summary>
+        /// Set when this table is a history table for a temporal relationship.
+        /// Points to the main (temporal) table node.
+        /// </summary>
+        public TableNode MainTemporalTableNode { get; set; }
+
+        /// <summary>
+        /// History table ID from sys.tables (used before linking nodes).
+        /// </summary>
+        public int? HistoryTableId { get; set; }
+
 
         public TableNode(int tableId, string tableName, TableSchema schema)
         {
