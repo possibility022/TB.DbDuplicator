@@ -80,7 +80,7 @@ namespace DatabaseCopier
             return s.Elapsed;
         }
 
-        public void ProgressEvent (object sender, System.Data.SqlClient.SqlRowsCopiedEventArgs args)
+        public void ProgressEvent (object sender, Microsoft.Data.SqlClient.SqlRowsCopiedEventArgs args)
         {
             RowsCopiedNotify?.Invoke(this, args.RowsCopied);
         }
