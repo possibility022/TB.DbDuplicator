@@ -18,3 +18,8 @@ Converted DatabaseCopier.Proxy to SDK-style and upgraded to net10.0. Removed leg
 
 Converted DatabaseCopier WPF app to SDK-style and upgraded to net10.0-windows. Added UseWPF=true, removed legacy references. Excluded DatabaseCopier.Models subfolder from SDK globbing. Added Microsoft.Data.SqlClient 7.0.1 and fixed Engine.cs SqlRowsCopiedEventArgs reference. Removed packages now built into net10.0 (Microsoft.Bcl.AsyncInterfaces, System.Threading.Tasks.Extensions, etc.). Build: ✅ 0 errors, 4 pre-existing warnings.
 
+
+## [2026-04-27 12:16] 05-final-validation
+
+Full solution build on net10.0: ✅ 0 errors, 4 pre-existing warnings. All 3 projects (DatabaseCopier.Models net10.0, DatabaseCopier.Proxy net10.0, DatabaseCopier net10.0-windows) build successfully. Upgrade complete.
+

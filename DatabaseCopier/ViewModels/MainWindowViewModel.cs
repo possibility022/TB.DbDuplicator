@@ -1,14 +1,15 @@
 ﻿using DatabaseCopier.Commands;
 using DatabaseCopier.Models;
 using DatabaseCopier.Proxy;
-using Newtonsoft.Json;
-using Prism.Mvvm;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Timers;
 using System.Windows;
@@ -16,7 +17,19 @@ using System.Windows.Input;
 
 namespace DatabaseCopier.ViewModels
 {
-    class MainWindowViewModel : BindableBase
+    abstract class ObservableObject : INotifyPropertyChanged
+    {
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
+        {
+            if (EqualityComparer<T>.Default.Equals(field, value)) return false;
+            field = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            return true;
+        }
+    }
+
+    class MainWindowViewModel : ObservableObject
     {
         private const string fileName = "cache.cache";
 
@@ -237,14 +250,14 @@ namespace DatabaseCopier.ViewModels
             CacheFile.Instance.DatabaseSource.Add(DatabaseSource);
             CacheFile.Instance.LastIgnoredTables = new HashSet<string>(TablesToIgnore.Select(r => r.TableName));
 
-            File.WriteAllText(fileName, JsonConvert.SerializeObject(CacheFile.Instance));
+            File.WriteAllText(fileName, JsonSerializer.Serialize(CacheFile.Instance));
         }
 
         private void LoadCacheFile()
         {
             if (File.Exists(fileName))
             {
-                CacheFile.Instance = JsonConvert.DeserializeObject<CacheFile>(File.ReadAllText(fileName));
+                CacheFile.Instance = JsonSerializer.Deserialize<CacheFile>(File.ReadAllText(fileName));
                 DatabaseDestinationList = new ObservableCollection<string>(CacheFile.Instance.DatabaseDestination);
                 DatabaseSourceList = new ObservableCollection<string>(CacheFile.Instance.DatabaseSource);
             }
