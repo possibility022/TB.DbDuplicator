@@ -29,6 +29,11 @@ namespace DatabaseCopier.Models
         /// </summary>
         public int? HistoryTableId { get; set; }
 
+        /// <summary>
+        /// Number of rows in the table.
+        /// </summary>
+        public long RowCount { get; set; }
+
 
         public TableNode(int tableId, string tableName, TableSchema schema)
         {
@@ -38,6 +43,6 @@ namespace DatabaseCopier.Models
             FullTableName = $"[{Schema.Name}].[{TableName}]";
         }
 
-        public override string ToString() => FullTableName;
+        public override string ToString() => $"{FullTableName} ({RowCount:N0} rows)";
     }
 }

@@ -74,7 +74,14 @@ namespace DatabaseCopier.Proxy
             {
                 var cmd = new SqlCommand
                 {
-                    CommandText = "SELECT name, object_id, schema_id, temporal_type, history_table_id FROM sys.tables",
+                    // Join with sys.partitions to get row counts (no VIEW DATABASE STATE permission required)
+                    CommandText = @"
+                        SELECT t.name, t.object_id, t.schema_id, t.temporal_type, t.history_table_id,
+                               ISNULL(SUM(ps.rows), 0) AS row_count
+                        FROM sys.tables t
+                        LEFT JOIN sys.partitions ps 
+                            ON t.object_id = ps.object_id AND ps.index_id IN (0, 1)
+                        GROUP BY t.name, t.object_id, t.schema_id, t.temporal_type, t.history_table_id",
                     CommandType = CommandType.Text,
                     Connection = connection
                 };
@@ -92,8 +99,10 @@ namespace DatabaseCopier.Proxy
                         var schemaId = reader.GetInt32(2);
                         var temporalType = reader.GetByte(3);
                         var historyTableId = reader.IsDBNull(4) ? (int?)null : reader.GetInt32(4);
+                        var rowCount = reader.GetInt64(5);
 
                         var node = new TableNode(tableId, tableName, schemas[schemaId]);
+                        node.RowCount = rowCount;
                         // temporal_type = 2 means system-versioned temporal table
                         if (temporalType == 2 && historyTableId.HasValue)
                             node.HistoryTableId = historyTableId;
@@ -162,8 +171,7 @@ namespace DatabaseCopier.Proxy
                             c.max_length,
                             c.precision,
                             c.scale,
-                            c.is_nullable,
-                            c.collation_name
+                            c.is_nullable
                         FROM sys.columns c
                         INNER JOIN sys.types tp ON c.user_type_id = tp.user_type_id
                         INNER JOIN sys.tables t ON c.object_id = t.object_id
@@ -191,7 +199,6 @@ namespace DatabaseCopier.Proxy
                         var precision = reader.GetByte(3);
                         var scale     = reader.GetByte(4);
                         var nullable  = reader.GetBoolean(5);
-                        var collation = reader.IsDBNull(6) ? null : reader.GetString(6);
 
                         string typeDecl;
                         switch (typeName.ToLower())
@@ -201,14 +208,10 @@ namespace DatabaseCopier.Proxy
                             case "varbinary":
                             case "binary":
                                 typeDecl = maxLength == -1 ? typeName + "(MAX)" : typeName + "(" + maxLength + ")";
-                                if (!string.IsNullOrEmpty(collation))
-                                    typeDecl += " COLLATE " + collation;
                                 break;
                             case "nvarchar":
                             case "nchar":
                                 typeDecl = maxLength == -1 ? typeName + "(MAX)" : typeName + "(" + (maxLength / 2) + ")";
-                                if (!string.IsNullOrEmpty(collation))
-                                    typeDecl += " COLLATE " + collation;
                                 break;
                             case "decimal":
                             case "numeric":
@@ -402,24 +405,19 @@ namespace DatabaseCopier.Proxy
                         }
                         finally
                         {
-                            // Re-enable system versioning if it was disabled and copy completed successfully
-                            if (copyCompleted && (disabledVersioning || (temporalInfo != null && table.HistoryTableNode != null)))
+                            // Re-enable system versioning only if we explicitly disabled it on the target
+                            if (copyCompleted && disabledVersioning)
                             {
-                                // Use HistoryTableNode from TableNode (already linked) for the history table reference
                                 var historyRef = table.HistoryTableNode != null
                                     ? $"HISTORY_TABLE = {table.HistoryTableNode.FullTableName}, "
-                                    : (temporalInfo?.HistoryTableFullName != null 
-                                        ? $"HISTORY_TABLE = {temporalInfo.HistoryTableFullName}, " 
+                                    : (temporalInfo?.HistoryTableFullName != null
+                                        ? $"HISTORY_TABLE = {temporalInfo.HistoryTableFullName}, "
                                         : "");
-                                
-                                // Only enable versioning if we have a history table reference and versioning was active in source
-                                if (disabledVersioning || !string.IsNullOrEmpty(historyRef))
-                                {
-                                    using (var alterCmd = new SqlCommand(
-                                        $"ALTER TABLE {table.FullTableName} SET (SYSTEM_VERSIONING = ON ({historyRef}DATA_CONSISTENCY_CHECK = OFF))",
-                                        targetConnection))
-                                        alterCmd.ExecuteNonQuery();
-                                }
+
+                                using (var alterCmd = new SqlCommand(
+                                    $"ALTER TABLE {table.FullTableName} SET (SYSTEM_VERSIONING = ON ({historyRef}DATA_CONSISTENCY_CHECK = OFF))",
+                                    targetConnection))
+                                    alterCmd.ExecuteNonQuery();
                             }
                         }
                     }
@@ -436,7 +434,8 @@ namespace DatabaseCopier.Proxy
                 {
                     CommandText = "SELECT Count_BIG(*) FROM " + table.FullTableName,
                     CommandType = CommandType.Text,
-                    Connection = connection
+                    Connection = connection,
+                    CommandTimeout = 200
                 };
 
                 connection.Open();
