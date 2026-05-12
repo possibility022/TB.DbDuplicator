@@ -34,16 +34,6 @@ namespace DatabaseCopier.Models
         public Hierarchy(IDictionary<int, TableNode> tables, IEnumerable<ForeignKey> keys)
         {
             BuildReferences(tables, keys);
-
-            foreach (var table in tables)
-            {
-                Console.WriteLine(table.Value.TableName);
-                foreach (var reference in table.Value.Childrens)
-                {
-                    Console.WriteLine($"\t{reference.TableName}");
-                }
-            }
-
             _highestCountOfRelations = tables.Values.Max(r => r.Childrens.Count);
             _tables = new HashSet<TableNode>(tables.Values);
         }

@@ -1,4 +1,4 @@
-﻿using DatabaseCopier.Models;
+using DatabaseCopier.Models;
 using DatabaseCopier.Proxy;
 using System;
 using System.Collections.Generic;
@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DatabaseCopier
+namespace DatabaseCopier.TUI
 {
     class Engine
     {
@@ -59,16 +59,16 @@ namespace DatabaseCopier
                     StartingWith?.Invoke(this, new Tuple<string, long>(t.FullTableName, rows));
                     _databaseIO.TimeOut = Timeout;
                     _databaseIO.CopyTable(t, cancellationToken);
-                    
+
                     if (cancellationToken.IsCancellationRequested)
                     {
                         Stopped?.Invoke(this, EventArgs.Empty);
                         break;
                     }
-                    
+
                     DoneWith?.Invoke(this, t.FullTableName);
                 }
-                
+
                 if (!cancellationToken.IsCancellationRequested)
                     DoneWith?.Invoke(this, null);
             }
@@ -80,7 +80,7 @@ namespace DatabaseCopier
             return s.Elapsed;
         }
 
-        public void ProgressEvent (object sender, Microsoft.Data.SqlClient.SqlRowsCopiedEventArgs args)
+        public void ProgressEvent(object sender, Microsoft.Data.SqlClient.SqlRowsCopiedEventArgs args)
         {
             RowsCopiedNotify?.Invoke(this, args.RowsCopied);
         }
